@@ -1,0 +1,173 @@
+import pandas as pd
+import os
+from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib.pyplot as plt
+import numpy as np
+import warnings
+warnings.filterwarnings("ignore")
+
+def movingaverage(interval, window_size):
+    window = np.ones(int(window_size)) / float(window_size)
+    return np.convolve(interval, window, 'same')
+
+def Graf_Pruebas(Pruebas):
+    figuras=[]
+    for p in  range(len(Pruebas)):
+        df=Pruebas[f'Prueba_{p+1}']
+        fig = plt.figure(constrained_layout=True, figsize=(15,9))
+        plt.axis("off")
+        fig.suptitle(f"\n\nPrueba_{p+1}")
+        ax = fig.add_subplot(1,1,1)
+        ax.plot(df['Tiempo'], df["_2"], linewidth=1.5)
+        ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
+        startx, endx = ax.get_xlim()
+        starty, endy = ax.get_ylim()
+        ax.set_ylim([0, endy])
+        ax.tick_params(axis="x", labelsize=10)
+        ax.tick_params(axis='y', labelsize=10)
+        ax.set_xlim(startx, endx)
+        startx, endx = int(startx), int(endx)
+        ax.xaxis.tick_bottom()
+        ax.xaxis.set_label_position('bottom')
+        ax.set_ylabel("Z_f(t)", rotation=90, fontsize=10.2)
+        ax.set_xlabel("t(s)", fontsize=10.2)
+        ax.grid(True, zorder=1, alpha=0.5)
+        plt.tight_layout(pad=2, w_pad=1, h_pad=2)
+        figuras.append(fig)
+
+    return figuras
+
+def Graf_Mediciones(Pruebas):
+    figuras=[]
+    for p in  range(len(Pruebas)):
+        df=Pruebas[f'Medicion_{p+1}']
+        fig = plt.figure(constrained_layout=True, figsize=(15,9))
+        plt.axis("off")
+        fig.suptitle(f"\n\nMedicion_{p+1}")
+        ax = fig.add_subplot(1,1,1)
+        ax.plot(df['Tiempo'], df["_2"], linewidth=1.5)
+        ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
+        startx, endx = ax.get_xlim()
+        starty, endy = ax.get_ylim()
+        ax.set_ylim([0, endy])
+        ax.tick_params(axis="x", labelsize=10)
+        ax.tick_params(axis='y', labelsize=10)
+        ax.set_xlim(startx, endx)
+        startx, endx = int(startx), int(endx)
+        ax.xaxis.tick_bottom()
+        ax.xaxis.set_label_position('bottom')
+        ax.set_ylabel("Z_f(t)", rotation=90, fontsize=10.2)
+        ax.set_xlabel("t(s)",rotation=90, fontsize=10.2)
+        ax.grid(True, zorder=1, alpha=0.5)
+        plt.tight_layout(pad=2, w_pad=1, h_pad=2)
+        figuras.append(fig)
+
+    return figuras
+
+# Crea un diccionario para almacenar los DataFrames
+Pruebas = {}
+Mediciones = {}
+
+# Lee cada hoja del archivo Excel y guarda los datos en un DataFrame
+C=0.10065
+for i in range(2, 5):
+    nombre_hoja = f'DAT{i}'
+    nombre_dataframe = f'Prueba_{i-1}'
+    df = pd.read_excel('Mediciones.xlsx', sheet_name=nombre_hoja)
+    df['Tiempo'] = df.index * C  # Agrega una nueva columna con el índice multiplicado por la constante
+    Pruebas[nombre_dataframe] = df
+
+B=0.05063
+for i in range(5, 20):
+    nombre_hoja = f'DAT{i}'
+    nombre_dataframe = f'Medicion_{i-4}'
+    df = pd.read_excel('Mediciones.xlsx', sheet_name=nombre_hoja)
+    df['Tiempo'] = df.index * B  # Agrega una nueva columna con el índice multiplicado por la constante
+    Mediciones[nombre_dataframe] = df
+
+
+# Ahora puedes acceder a cada DataFrame por su nombre
+print('Prueba_1')
+print(Pruebas['Prueba_1'])   
+print('Prueba_2')
+print(Pruebas['Prueba_2']) 
+print('Prueba_3') 
+print(Pruebas['Prueba_3'])
+print('Medicion_1')
+print(Mediciones['Medicion_1'])
+print('Medicion_15')
+print(Mediciones['Medicion_15'])
+
+# Elimina la entrada correspondiente a 'Medicion4' del diccionario
+Mediciones.pop('Medicion_1', None)
+
+# Verifica que la entrada se haya eliminado
+print(Mediciones.keys())
+
+# Crea un nuevo diccionario para almacenar los DataFrames con los nuevos nombres
+nuevos_Mediciones = {}
+
+# Renombra los DataFrames y los almacena en el nuevo diccionario
+for nombre_antiguo,Mediciones in Mediciones.items():
+    partes_nombre = nombre_antiguo.split('Medicion_')
+    numero = int(partes_nombre[1])
+    nuevo_nombre = f'Medicion_{numero - 1}'
+    nuevos_Mediciones[nuevo_nombre] = Mediciones
+# Actualiza el diccionario original con los nuevos nombres
+Mediciones = nuevos_Mediciones
+
+# Verifica los nuevos nombres de los DataFrames
+print(Mediciones.keys())
+
+ventana = 3
+
+# Aplicar promedio móvil a los DataFrames en el diccionario Pruebas
+for nombre, df in Pruebas.items():
+    Pruebas[nombre]['_2'] = movingaverage(df['_2'], ventana)
+
+# Aplicar promedio móvil a los DataFrames en el diccionario Mediciones
+for nombre, df in Mediciones.items():
+    Mediciones[nombre]['_2'] = movingaverage(df['_2'], ventana)
+
+
+plt.axis("off")
+
+
+
+absFilePath = os.path.abspath(__file__)
+path, filename = os.path.split(absFilePath)
+
+Graf_Prueba=Graf_Pruebas(Pruebas)
+Graf_Med=Graf_Mediciones(Mediciones)
+
+nombre_arch = f"Graficos Pruebas.pdf"
+pp = PdfPages(nombre_arch)
+
+for p in  range(len(Graf_Prueba)):
+    fig=Graf_Prueba[p]
+    pp.savefig(fig)
+
+pp.close()
+
+nombre_arch1 = f"Graficos Mediciones.pdf"
+pp2 = PdfPages(nombre_arch1)
+
+for p in  range(len(Graf_Med)):
+    fig2=Graf_Med[p]
+    pp2.savefig(fig2)
+
+pp2.close()
+
+
+Prueba=Pruebas['Prueba_3']
+Medicion_1=Mediciones['Medicion_13']
+Medicion_2=Mediciones['Medicion_14']
+
+# Guardar Prueba_3 en un archivo Excel
+Prueba.to_excel('Prueba.xlsx', index=False)
+
+# Guardar Medicion_13 en un archivo Excel
+Medicion_1.to_excel('Medicion_1.xlsx', index=False)
+
+# Guardar Medicion_14 en un archivo Excel
+Medicion_2.to_excel('Medicion_2.xlsx', index=False)
